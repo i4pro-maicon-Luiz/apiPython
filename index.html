@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Tempo Atual</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1 class="titulo">Dados Meteorológicos</h1>
+    <div style="max-width:400px;margin:30px auto;text-align:center;">
+        <input type="text" id="cidade" placeholder="Cidade" class="input-campo" style="margin-right:10px;" oninput="habilitarBotao()">
+        <input type="text" id="estado" placeholder="Estado (UF)" class="input-campo" maxlength="2" style="text-transform:uppercase;" oninput="habilitarBotao()">
+        <button class="botao" id="buscarBtn" onclick="buscarTempo()" disabled>Buscar Tempo</button>
+    </div>
+    <div id="tabela"></div>
+    <div id="loading" style="display:none; text-align:center; margin-top:20px;">
+        <img src="https://i.gifer.com/ZZ5H.gif" alt="Carregando..." width="60">
+        <div>Carregando...</div>
+    </div>
+    <pre id="resultado" style="display:none;"></pre>
+
+    <script>
+        const camposPt = {
+            temperature: "Temperatura (°C)",
+            windspeed: "Velocidade do Vento (km/h)",
+            winddirection: "Direção do Vento (°)",
+            weathercode: "Código do Tempo",
+            time: "Horário"
+        };
+
+        function buscarTempo() {
+            const cidade = document.getElementById('cidade').value.trim();
+            const estado = document.getElementById('estado').value.trim().toUpperCase();
+            document.getElementById('loading').style.display = "block";
+            document.getElementById('tabela').innerHTML = "";
+            document.getElementById('resultado').style.display = "none";
+
+            let url = 'http://127.0.0.1:5000/weather';
+            if (cidade && estado) {
+                url += `?city=${encodeURIComponent(cidade)}&state=${encodeURIComponent(estado)}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading').style.display = "none";
+                    if (data.error) {
+                        document.getElementById('resultado').style.display = "block";
+                        document.getElementById('resultado').textContent = data.error;
+                        return;
+                    }
+                    if (data.time) {
+                        data.time = formatarHoraBrasileira(data.time);
+                    }
+                    criarTabela(data);
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = "none";
+                    document.getElementById('tabela').innerHTML = "";
+                    document.getElementById('resultado').style.display = "block";
+                    document.getElementById('resultado').textContent = "Erro ao buscar dados";
+                });
+        }
+
+        function formatarHoraBrasileira(isoString) {
+            const data = new Date(isoString);
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            const hora = String(data.getHours()).padStart(2, '0');
+            const min = String(data.getMinutes()).padStart(2, '0');
+            return `${dia}/${mes}/${ano} ${hora}:${min}`;
+        }
+
+        function criarTabela(dados) {
+            let html = '<table class="tabela"><tr>';
+            for (let chave in dados) {
+                html += `<th>${camposPt[chave] || chave}</th>`;
+            }
+            html += "</tr><tr>";
+            for (let chave in dados) {
+                html += `<td>${dados[chave]}</td>`;
+            }
+            html += "</tr></table>";
+            document.getElementById('tabela').innerHTML = html;
+        }
+
+        function habilitarBotao() {
+            const cidade = document.getElementById('cidade').value.trim();
+            const estado = document.getElementById('estado').value.trim();
+            document.getElementById('buscarBtn').disabled = !(cidade && estado);
+        }
+
+        // Para garantir que o botão inicie desabilitado ao carregar a página:
+        window.onload = habilitarBotao;
+    </script>
+</body>
+</html>
